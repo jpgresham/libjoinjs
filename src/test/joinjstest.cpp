@@ -45,12 +45,27 @@ int main(int argc,  char *argv[]) {
         rapidjson::Reader reader;
         reader.Parse(is, handler);
 
+
+        unordered_map<string, jjn::JsonSchema> jsonSchema = handler.jsonSchema();
+        console->info("Completed parsing the schema for provided json input.");
+
+        for (auto it : jsonSchema) {
+            jjn::JsonSchema schema = it.second;
+            cout << it.first << endl;
+            cout << "Map Id: " << schema.mapId << endl;
+            //cout << "Schema Key: " << schema.schemaKey << endl;
+            cout << "Id Property Key: " << schema.idPropertyKey << endl;
+            cout << endl << endl;
+        }
+
         fclose(fp);
 
 
     } catch (const spdlog::spdlog_ex &ex) {
         std::cout << "Log init failed: " << ex.what() << std::endl;
         return 1;
+    } catch(const char* message) {
+        std::cout << "We received the following error message: " << message << std::endl;
     }
     return 0;
 }
