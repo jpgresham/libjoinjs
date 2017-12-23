@@ -4,7 +4,7 @@
 
 #include <spdlog/spdlog.h>
 #include <iostream>
-#include "../main/mapper.h"
+#include "../main/schema_parser.h"
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 #include <sstream>

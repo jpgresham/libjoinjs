@@ -2,7 +2,7 @@
 
 #include <iostream>
 #include <spdlog/spdlog.h>
-#include "mapper.h"
+#include "schema_parser.h"
 
 namespace jjn {
     int Map(char *inputJson) {
