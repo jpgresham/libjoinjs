@@ -53,8 +53,9 @@ int main(int argc,  char *argv[]) {
             jjn::JsonSchema schema = it.second;
             cout << it.first << endl;
             cout << "Map Id: " << schema.mapId << endl;
-            //cout << "Schema Key: " << schema.schemaKey << endl;
+            cout << "Schema Key: " << schema.schemaKey << endl;
             cout << "Id Property Key: " << schema.idPropertyKey << endl;
+            cout << "First property is: " << schema.properties.at(0) << endl;
             cout << endl << endl;
         }
 

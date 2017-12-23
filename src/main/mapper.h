@@ -4,12 +4,6 @@
 
 #ifndef JOINJS_MAPPER_H
 #define JOINJS_MAPPER_H
-#define MAP_ID = "mapId"
-#define ID_PROPERTY = "idProperty"
-#define PROPERTIES = "properties"
-#define ASSOCIATIONS = "associations"
-#define NAME = "name"
-#define COLLECTIONS = "collections"
 
 #include <iostream>
 #include <rapidjson/rapidjson.h>
@@ -18,6 +12,7 @@
 #include <unordered_map>
 #include <spdlog/spdlog.h>
 #include <vector>
+#include "exceptions.h"
 
 using namespace std;
 using namespace rapidjson;
@@ -25,22 +20,22 @@ using namespace rapidjson;
 namespace jjn {
 
     struct Associations {
-        char *name;
-        char *mapId;
+        string name;
+        string mapId;
     };
 
     struct Collections {
-        char *name;
-        char *mapId;
+        string name;
+        string mapId;
     };
 
     struct JsonSchema {
-        char *schemaKey;
-        char *mapId;
-        char *idPropertyKey;
-        vector<string> *properties;
-        vector<Associations> *associations;
-        vector<Collections> *collections;
+        string schemaKey;
+        string mapId;
+        string idPropertyKey;
+        vector<string> properties;
+        vector<Associations> associations;
+        vector<Collections> collections;
 
     };
 
@@ -57,101 +52,109 @@ namespace jjn {
         bool insideCollectionsArray = false;
         int associationsObjCount = 0;
         int collectionsObjCount = 0;
+
     public:
 
         SchemaJsonHandler() {
-            std::cout << "In the Constructor" << std::endl;
+            cout << "In the Constructor" << endl;
             jsonSchemaUnorderedMap = unordered_map<string, JsonSchema>();
         }
 
-        bool Null() { std::cout << "Null()" << std::endl; return true; }
-        bool Bool(bool b) { std::cout << "Bool(" << std::boolalpha << b << ")" << std::endl; return true; }
-        bool Int(int i) { std::cout << "Int(" << i << ")" << std::endl; return true; }
-        bool Uint(unsigned u) { std::cout << "Uint(" << u << ")" << std::endl; return true; }
-        bool Int64(int64_t i) { std::cout << "Int64(" << i << ")" << std::endl; return true; }
-        bool Uint64(uint64_t u) { std::cout << "Uint64(" << u << ")" << std::endl; return true; }
-        bool Double(double d) { std::cout << "Double(" << d << ")" << std::endl; return true; }
+        bool Null() { cout << "Null()" << endl; return true; }
+        bool Bool(bool b) { cout << "Bool(" << boolalpha << b << ")" << endl; return true; }
+        bool Int(int i) { cout << "Int(" << i << ")" << endl; return true; }
+        bool Uint(unsigned u) { cout << "Uint(" << u << ")" << endl; return true; }
+        bool Int64(int64_t i) { cout << "Int64(" << i << ")" << endl; return true; }
+        bool Uint64(uint64_t u) { cout << "Uint64(" << u << ")" << endl; return true; }
+        bool Double(double d) { cout << "Double(" << d << ")" << endl; return true; }
         bool RawNumber(const char* str, rapidjson::SizeType length, bool copy) {
-            std::cout << "Number(" << str << ", " << length << ", " << std::boolalpha << copy << ")" << std::endl;
+            cout << "Number(" << str << ", " << length << ", " << boolalpha << copy << ")" << endl;
             return true;
         }
         bool String(const char* str, rapidjson::SizeType length, bool copy) {
             try {
-                if (lastKey.empty()) {
-                    cout << "Setting up the JSON schema" << endl;
-                } else {
+                if (!lastKey.empty()) {
                     auto find = jsonSchemaUnorderedMap.find(currentSchemaKey);
                     if (find != jsonSchemaUnorderedMap.end()) {
-                        if (strcmp(lastKey.c_str(), "mapId") == 0) {
+                        if (strcmp(lastKey.c_str(), "mapId") == 0) { // MAPPING FOR MAP ID KEY
                             if (objectDepth == 2 && arrayDepth == 0) {
                                 jsonSchemaUnorderedMap.at(currentSchemaKey).mapId = (char *) malloc(length);
                                 jsonSchemaUnorderedMap.at(currentSchemaKey).mapId = const_cast<char *>(str);
                             } else if (objectDepth == 3 && arrayDepth == 1) {
                                 if (insideAssociationsArray) {
-                                    if (associationsObjCount > jsonSchemaUnorderedMap.at(currentSchemaKey).associations->size()) {
-                                         Associations *associations = new Associations();
-                                         jsonSchemaUnorderedMap.at(currentSchemaKey).associations->insert(jsonSchemaUnorderedMap.at(currentSchemaKey).associations->end(), *associations);
+                                    if (associationsObjCount > jsonSchemaUnorderedMap.at(currentSchemaKey).associations.size()) {
+                                         Associations associations = Associations();
+                                         jsonSchemaUnorderedMap.at(currentSchemaKey).associations.insert(jsonSchemaUnorderedMap.at(currentSchemaKey).associations.end(), associations);
                                      }
-                                    jsonSchemaUnorderedMap.at(
-                                            currentSchemaKey).associations->back().mapId = (char *) malloc(length);
-                                    jsonSchemaUnorderedMap.at(
-                                            currentSchemaKey).associations->back().mapId = const_cast<char *>(str);
+                                    jsonSchemaUnorderedMap.at(currentSchemaKey).associations.back().mapId = string(str);
                                 } else if (insideCollectionsArray) {
-                                    if (collectionsObjCount > jsonSchemaUnorderedMap.at(currentSchemaKey).collections->size()) {
-                                        Collections *collections = new Collections();
-                                        jsonSchemaUnorderedMap.at(currentSchemaKey).collections->insert(jsonSchemaUnorderedMap.at(currentSchemaKey).collections->end(), *collections);
+                                    if (collectionsObjCount > jsonSchemaUnorderedMap.at(currentSchemaKey).collections.size()) {
+                                        Collections collections = Collections();
+                                        jsonSchemaUnorderedMap.at(currentSchemaKey).collections.insert(jsonSchemaUnorderedMap.at(currentSchemaKey).collections.end(), collections);
                                     }
-                                    jsonSchemaUnorderedMap.at(
-                                            currentSchemaKey).collections->back().mapId = (char *) malloc(length);
-                                    jsonSchemaUnorderedMap.at(
-                                            currentSchemaKey).collections->back().mapId = const_cast<char *>(str);
+                                    jsonSchemaUnorderedMap.at(currentSchemaKey).collections.back().mapId = string(str);
                                 } else {
                                     throw "ERROR CREATING MAP ID";
                                 }
                             }
                         } else if (strcmp(lastKey.c_str(), "idProperty") == 0) {
-                            jsonSchemaUnorderedMap.at(currentSchemaKey).idPropertyKey = (char *) malloc(length);
-                            jsonSchemaUnorderedMap.at(currentSchemaKey).idPropertyKey = const_cast<char *>(str);
-                        } else if (strcmp(lastKey.c_str(), "name") == 0) {
+                            jsonSchemaUnorderedMap.at(currentSchemaKey).idPropertyKey = string(str);
+                        } else if (strcmp(lastKey.c_str(), "name") == 0) { // MAPPING FOR NAME KEY
                             // The name key only exists in foreign key mappings, etc collections and associations
                             if (arrayDepth == 1 && objectDepth == 3) {
-                                // TODO
+                                if (insideAssociationsArray) {
+                                    if (associationsObjCount > jsonSchemaUnorderedMap.at(currentSchemaKey).associations.size()) {
+                                        Associations associations = Associations();
+                                        jsonSchemaUnorderedMap.at(currentSchemaKey).associations.insert(jsonSchemaUnorderedMap.at(currentSchemaKey).associations.end(), associations);
+                                    }
+                                    jsonSchemaUnorderedMap.at(currentSchemaKey).associations.back().name = string(str);
+                                } else if (insideCollectionsArray) {
+                                    if (collectionsObjCount > jsonSchemaUnorderedMap.at(currentSchemaKey).collections.size()) {
+                                        Collections collections = Collections();
+                                        jsonSchemaUnorderedMap.at(currentSchemaKey).collections.insert(jsonSchemaUnorderedMap.at(currentSchemaKey).collections.end(), collections);
+                                    }
+                                    jsonSchemaUnorderedMap.at(currentSchemaKey).collections.back().name = string(str);
+                                } else {
+                                    throw "ERROR CREATING MAP ID";
+                                }
                             } else {
                                 throw "Schema error detected. The \"name\" key must appear inside an array in either a \"properties\", \"collections\", or \"associations\" object.";
                             }
                         } else if (strcmp(lastKey.c_str(), "collections") == 0) {
-                            jsonSchemaUnorderedMap.at(currentSchemaKey).collections = new vector<Collections>();
+                            jsonSchemaUnorderedMap.at(currentSchemaKey).collections = vector<Collections>();
                         } else if (strcmp(lastKey.c_str(), "associations") == 0) {
-
-                            if (jsonSchemaUnorderedMap.at(currentSchemaKey).associations == NULL) {
-                                jsonSchemaUnorderedMap.at(currentSchemaKey).associations = new vector<Associations>();
+                            vector<Associations> *associationsPtr = &jsonSchemaUnorderedMap.at(currentSchemaKey).associations;
+                            if (associationsPtr == NULL) {
+                                jsonSchemaUnorderedMap.at(currentSchemaKey).associations = vector<Associations>();
                             }
 
                         } else if ((objectDepth == 2 && arrayDepth == 1) && insidePropertiesArray == true) {
-                            if (jsonSchemaUnorderedMap.at(currentSchemaKey).properties == NULL) {
-                                jsonSchemaUnorderedMap.at(currentSchemaKey).properties = new vector<string>();
+                            vector<string> *propertiesPtr = &jsonSchemaUnorderedMap.at(currentSchemaKey).properties;
+                            if (propertiesPtr == NULL) {
+                                jsonSchemaUnorderedMap.at(currentSchemaKey).properties = vector<string>();
                             }
-                            jsonSchemaUnorderedMap.at(currentSchemaKey).properties->insert(
-                                    jsonSchemaUnorderedMap.at(currentSchemaKey).properties->end(), str);
+                            jsonSchemaUnorderedMap.at(currentSchemaKey).properties.insert(jsonSchemaUnorderedMap.at(currentSchemaKey).properties.end(), str);
                         } else if (objectDepth == 1) {
 
                         } else {
                             // throw error
-                            throw "Unable to find schema representation for ";
+                            throw SchemaParseException("Unable to find schema representation for ");
                         }
+                    } else {
+                        // TODO
                     }
                 }
-                std::cout << "String(" << str << ", " << length << ", " << std::boolalpha << copy << ")" << std::endl;
+                cout << "String(" << str << ", " << length << ", " << boolalpha << copy << ")" << endl;
             } catch(...) {
-                auto expPtr = std::current_exception();
+                auto expPtr = current_exception();
 
                 try
                 {
-                    if(expPtr) std::rethrow_exception(expPtr);
+                    if(expPtr) rethrow_exception(expPtr);
                 }
-                catch(const std::exception& e) //it would not work if you pass by value
+                catch(const exception& e) //it would not work if you pass by value
                 {
-                    std::cout << e.what();
+                    cout << e.what();
                 }
             }
             return true;
@@ -185,40 +188,44 @@ namespace jjn {
                     throw "Schema error detected. The name key must appear inside an array and schema object.";
                 }
             } else if (strcmp(str,"collections") == 0) {
-                if (jsonSchemaUnorderedMap.at(currentSchemaKey).collections == NULL) {
-                    jsonSchemaUnorderedMap.at(currentSchemaKey).collections = new vector<Collections>;
+                vector<Collections> *collectionsPtr = &jsonSchemaUnorderedMap.at(currentSchemaKey).collections;
+                if (collectionsPtr == NULL) {
+                    jsonSchemaUnorderedMap.at(currentSchemaKey).collections = vector<Collections>();
                 }
                 this->insideCollectionsArray = true;
 
             } else if (strcmp(str, "associations") == 0) {
-                if (jsonSchemaUnorderedMap.at(currentSchemaKey).associations == NULL) {
-                    jsonSchemaUnorderedMap.at(currentSchemaKey).associations = new vector<Associations>;
+                vector<Associations> *associationsPtr = &jsonSchemaUnorderedMap.at(currentSchemaKey).associations;
+                if (associationsPtr == NULL) {
+                    jsonSchemaUnorderedMap.at(currentSchemaKey).associations = vector<Associations>();
                 }
                 this->insideAssociationsArray = true;
             } else if (objectDepth == 1) { // We are in at the schema definition level.
                 currentSchemaKey = str;
-                jsonSchemaUnorderedMap.insert(make_pair(str, JsonSchema()));
+                JsonSchema schema = JsonSchema();
+                schema.schemaKey = string(str);
+                jsonSchemaUnorderedMap.insert(make_pair(str, schema));
             } else {
                 cout << "We do not have a mapping for the provided key " << str << endl;
             }
 
-            std::cout << "Key(" << str << ", " << length << ", " << std::boolalpha << copy << ")" << std::endl;
+            cout << "Key(" << str << ", " << length << ", " << boolalpha << copy << ")" << endl;
             return true;
         }
         bool EndObject(rapidjson::SizeType memberCount) {
             this->objectDepth--;
-            std::cout << "EndObject(" << memberCount << ")" << std::endl; return true;
+            cout << "EndObject(" << memberCount << ")" << endl; return true;
         }
         bool StartArray() {
             this->arrayDepth++;
-            std::cout << "StartArray()" << std::endl; return true;
+            cout << "StartArray()" << endl; return true;
         }
         bool EndArray(rapidjson::SizeType elementCount) {
             this->arrayDepth--;
             insideAssociationsArray = false;
             insidePropertiesArray = false;
             insideCollectionsArray = false;
-            std::cout << "EndArray(" << elementCount << ")" << std::endl; return true;
+            cout << "EndArray(" << elementCount << ")" << endl; return true;
         }
 
         unordered_map<string, JsonSchema> jsonSchema() {
