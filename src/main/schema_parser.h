@@ -42,7 +42,7 @@ namespace jjn {
     class SchemaJsonHandler  : public BaseReaderHandler<UTF8<>, SchemaJsonHandler> {
     private:
         unordered_map<string, JsonSchema> jsonSchemaUnorderedMap;
-        shared_ptr<spdlog::logger> console = spdlog::stdout_color_mt("mapper");
+        shared_ptr<spdlog::logger> console = spdlog::stdout_color_mt("schema_mapper");
         string lastKey;
         string currentSchemaKey;
         int objectDepth = 0;
@@ -53,11 +53,20 @@ namespace jjn {
         int associationsObjCount = 0;
         int collectionsObjCount = 0;
 
+        SchemaJsonHandler() {
+            jsonSchemaUnorderedMap = unordered_map<string, JsonSchema>();
+        }
+
     public:
 
-        SchemaJsonHandler() {
-            cout << "In the Constructor" << endl;
-            jsonSchemaUnorderedMap = unordered_map<string, JsonSchema>();
+        static SchemaJsonHandler& getInstance() {
+            static SchemaJsonHandler instance;
+            return instance;
+        }
+
+        unordered_map<string, JsonSchema>* getJsonSchema() {
+            unordered_map<string, JsonSchema> *schema = &jsonSchemaUnorderedMap;
+            return schema;
         }
 
         bool Null() { cout << "Null()" << endl; return true; }

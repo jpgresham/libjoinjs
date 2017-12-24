@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.9)
 find_package(GTest REQUIRED)
 include_directories(${GTEST_INCLUDE_DIRS})
 
-add_executable(joinjstest joinjstest.cpp ../main/exceptions.h ../main/mapper.h)
+add_executable(joinjstest joinjstest.cpp ../main/exceptions.h ../main/map.h)
 
 target_link_libraries(joinjstest joinjs)
 

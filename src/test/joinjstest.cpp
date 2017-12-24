@@ -5,10 +5,11 @@
 #include <spdlog/spdlog.h>
 #include <iostream>
 #include "../main/schema_parser.h"
-#include <rapidjson/document.h>
+#include "../main/map.h"
 #include <rapidjson/filereadstream.h>
 #include <sstream>
 #include <fstream>
+#include <rapidjson/istreamwrapper.h>
 
 using namespace std;
 
@@ -16,6 +17,25 @@ class JoinJSTest {
 public:
 private:
 };
+
+char* readFileToString() {
+    size_t length_;
+    char *json_;
+    FILE* fp = fopen("/Users/jacobgresham/test/schema.js", "r");
+
+    if (!fp) {
+        cout << "Unable to open test file" << endl;
+        exit(1);
+    }
+    fseek(fp, 0, SEEK_END);
+    length_ = static_cast<size_t>(ftell(fp));
+    fseek(fp, 0, SEEK_SET);
+    json_ = static_cast<char*>(malloc(length_ + 1));
+    size_t readLength = fread(json_, 1, length_, fp);
+    json_[readLength] = '\0';
+    fclose(fp);
+    return json_;
+}
 
 int main(int argc,  char *argv[]) {
     try {
@@ -39,7 +59,7 @@ int main(int argc,  char *argv[]) {
 
         char readBuffer[sz + 1];
 
-        jjn::SchemaJsonHandler handler;
+        jjn::SchemaJsonHandler handler = handler.getInstance();
         rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
 
         rapidjson::Reader reader;
@@ -60,6 +80,44 @@ int main(int argc,  char *argv[]) {
         }
 
         fclose(fp);
+
+        FILE* fp2 = fopen("/Users/jacobgresham/test/schema.js", "r");
+
+        if (!fp2) {
+            console->error("Unable to open test file");
+            exit(1);
+        }
+
+        console->info("Mapping the json to parsed schema. . .");
+
+        fseek(fp2, 0L, SEEK_END);
+        long sz2 = ftell(fp);
+
+        rewind(fp2);
+
+        char readBuffer2[sz2 + 1];
+
+        // now test parsing the json data
+
+        rapidjson::FileReadStream frs(fp2, readBuffer2, sizeof(readBuffer2));
+
+
+
+        size_t tell = frs.Tell();
+        char take = frs.Take();
+        char take2 = frs.Take();
+        char take3 = frs.Take();
+        char take4 = frs.Take();
+
+        size_t tell2 = frs.Tell();
+
+        console->info("JSON test file loaded. Mapping. . .");
+
+        char* json = readFileToString();
+
+        JsonMapper jsonMapper(json, "eventMembersMap", &jsonSchema);
+
+        const char* result = jsonMapper.doMapping();
 
 
     } catch (const spdlog::spdlog_ex &ex) {
