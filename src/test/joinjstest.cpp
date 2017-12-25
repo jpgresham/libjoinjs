@@ -21,7 +21,7 @@ private:
 char* readFileToString() {
     size_t length_;
     char *json_;
-    FILE* fp = fopen("/Users/jacobgresham/test/schema.js", "r");
+    FILE* fp = fopen("/Users/jacobgresham/test/testjson.js", "r");
 
     if (!fp) {
         cout << "Unable to open test file" << endl;
@@ -118,6 +118,8 @@ int main(int argc,  char *argv[]) {
         JsonMapper jsonMapper(json, "eventMembersMap", &jsonSchema);
 
         const char* result = jsonMapper.getResult();
+
+        cout << "THE RESULT JSON IS: " << endl << result << endl;
 
 
     } catch (const spdlog::spdlog_ex &ex) {

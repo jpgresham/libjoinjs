@@ -32,7 +32,7 @@ private:
             writer = new Writer<StringBuffer>(jsonStringBuffer);
             console->info("JSON Mapper initialized");
             Reader reader;
-            JsonMappingsHandler handler(this->jsonSchemaMap, schemaMapId);
+            JsonMappingsHandler handler(this->jsonSchemaMap, schemaMapId, writer);
             StringStream ss(json);
             reader.Parse(ss, handler);
             delete writer;
@@ -46,7 +46,11 @@ private:
     private:
         jjn::JsonSchema rootSchema; // The schema object grabbed from the mapid passed in
         unordered_map<std::string, jjn::JsonSchema>* jsonSchemaMap;
+        Writer<StringBuffer>* writer;
         const char *schemaMapId;
+        bool isCurrentKeyIdProperty = false;
+        string mapIdValue;
+        string currentKey;
 
         void setRootSchema() {
             for (auto it = jsonSchemaMap->begin(); it != jsonSchemaMap->end(); it++) {
@@ -59,44 +63,59 @@ private:
 
     public:
 
-        JsonMappingsHandler(unordered_map<string, jjn::JsonSchema> *jsonSchemaMap, const char *schemaMapId) {
+        JsonMappingsHandler(unordered_map<string, jjn::JsonSchema> *jsonSchemaMap, const char *schemaMapId, Writer<StringBuffer> *writer) {
             this->jsonSchemaMap = jsonSchemaMap;
             this->schemaMapId = schemaMapId;
+            this->writer = writer;
             setRootSchema();
         }
 
-        bool Null() { cout << "Null()" << endl; return true; }
-        bool Bool(bool b) { cout << "Bool(" << boolalpha << b << ")" << endl; return true; }
-        bool Int(int i) { cout << "Int(" << i << ")" << endl; return true; }
-        bool Uint(unsigned u) { cout << "Uint(" << u << ")" << endl; return true; }
-        bool Int64(int64_t i) { cout << "Int64(" << i << ")" << endl; return true; }
-        bool Uint64(uint64_t u) { cout << "Uint64(" << u << ")" << endl; return true; }
-        bool Double(double d) { cout << "Double(" << d << ")" << endl; return true; }
+        bool Null() { return true; }
+        bool Bool(bool b) { return true; }
+        bool Int(int i) { return true; }
+        bool Uint(unsigned u) { return true; }
+        bool Int64(int64_t i) { return true; }
+        bool Uint64(uint64_t u) { return true; }
+        bool Double(double d) { return true; }
         bool RawNumber(const char* str, rapidjson::SizeType length, bool copy) {
-            cout << "Number(" << str << ", " << length << ", " << boolalpha << copy << ")" << endl;
             return true;
         }
         bool String(const char* str, SizeType length, bool copy) {
-            cout << "String(" << str << ", " << length << ", " << boolalpha << copy << ")" << endl;
+            writer->String(str, length, copy);
             return true;
         }
         bool StartObject() {
-            cout << "StartObject()" << endl;
-
+            writer->StartObject();
             return true;
         }
         bool Key(const char* str, SizeType length, bool copy) {
-            cout << "Key(" << str << ", " << length << ", " << boolalpha << copy << ")" << endl;
-            if (strcmp(rootSchema.mapId.c_str(), str) == 0) {
-
+            isCurrentKeyIdProperty = false; // to make sure this is false whenever we enter this loop for a new key
+            currentKey = str;
+            if (strcmp(rootSchema.idPropertyKey.c_str(), str) == 0) {
+                isCurrentKeyIdProperty = true;
+                mapIdValue = str;
             } else {
-
+                if (find(rootSchema.properties.begin(), rootSchema.properties.end(), str) != rootSchema.properties.end()) {
+                    writer->Key(str);
+                } else {
+                    // This is either an association or collection
+                    writer->Key(str);
+                }
             }
             return true;
         }
-        bool EndObject(SizeType memberCount) { cout << "EndObject(" << memberCount << ")" << endl; return true; }
-        bool StartArray() { cout << "StartArray()" << endl; return true; }
-        bool EndArray(SizeType elementCount) { cout << "EndArray(" << elementCount << ")" << endl; return true; }
+        bool EndObject(SizeType memberCount) {
+            writer->EndObject(memberCount);
+            return true;
+        }
+        bool StartArray() {
+            writer->StartArray();
+            return true;
+        }
+        bool EndArray(SizeType elementCount) {
+            writer->EndArray(elementCount);
+            return true;
+        }
     };
 
 public:

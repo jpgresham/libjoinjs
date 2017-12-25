@@ -69,15 +69,14 @@ namespace jjn {
             return schema;
         }
 
-        bool Null() { cout << "Null()" << endl; return true; }
-        bool Bool(bool b) { cout << "Bool(" << boolalpha << b << ")" << endl; return true; }
-        bool Int(int i) { cout << "Int(" << i << ")" << endl; return true; }
-        bool Uint(unsigned u) { cout << "Uint(" << u << ")" << endl; return true; }
-        bool Int64(int64_t i) { cout << "Int64(" << i << ")" << endl; return true; }
-        bool Uint64(uint64_t u) { cout << "Uint64(" << u << ")" << endl; return true; }
-        bool Double(double d) { cout << "Double(" << d << ")" << endl; return true; }
+        bool Null() { return true; }
+        bool Bool(bool b) { return true; }
+        bool Int(int i) { return true; }
+        bool Uint(unsigned u) { return true; }
+        bool Int64(int64_t i) { return true; }
+        bool Uint64(uint64_t u) { return true; }
+        bool Double(double d) { return true; }
         bool RawNumber(const char* str, rapidjson::SizeType length, bool copy) {
-            cout << "Number(" << str << ", " << length << ", " << boolalpha << copy << ")" << endl;
             return true;
         }
         bool String(const char* str, rapidjson::SizeType length, bool copy) {
@@ -153,7 +152,6 @@ namespace jjn {
                         // TODO
                     }
                 }
-                cout << "String(" << str << ", " << length << ", " << boolalpha << copy << ")" << endl;
             } catch(...) {
                 auto expPtr = current_exception();
 
@@ -217,24 +215,22 @@ namespace jjn {
             } else {
                 cout << "We do not have a mapping for the provided key " << str << endl;
             }
-
-            cout << "Key(" << str << ", " << length << ", " << boolalpha << copy << ")" << endl;
             return true;
         }
         bool EndObject(rapidjson::SizeType memberCount) {
             this->objectDepth--;
-            cout << "EndObject(" << memberCount << ")" << endl; return true;
+            return true;
         }
         bool StartArray() {
             this->arrayDepth++;
-            cout << "StartArray()" << endl; return true;
+            return true;
         }
         bool EndArray(rapidjson::SizeType elementCount) {
             this->arrayDepth--;
             insideAssociationsArray = false;
             insidePropertiesArray = false;
             insideCollectionsArray = false;
-            cout << "EndArray(" << elementCount << ")" << endl; return true;
+            return true;
         }
 
         unordered_map<string, JsonSchema> jsonSchema() {
