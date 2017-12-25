@@ -117,7 +117,7 @@ int main(int argc,  char *argv[]) {
 
         JsonMapper jsonMapper(json, "eventMembersMap", &jsonSchema);
 
-        const char* result = jsonMapper.doMapping();
+        const char* result = jsonMapper.getResult();
 
 
     } catch (const spdlog::spdlog_ex &ex) {
