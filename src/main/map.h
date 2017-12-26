@@ -48,7 +48,7 @@ private:
         unordered_map<std::string, jjn::JsonSchema>* jsonSchemaMap;
         Writer<StringBuffer>* writer;
         const char *schemaMapId;
-        bool isCurrentKeyIdProperty = false;
+        bool isCurrentKeyInRootIdProperty = false; // This determines whether or not a value is in the root object or a sub object
         string mapIdValue;
         string currentKey;
 
@@ -71,7 +71,14 @@ private:
         }
 
         bool Null() { return true; }
-        bool Bool(bool b) { return true; }
+        bool Bool(bool b) {
+            if (isCurrentKeyInRootIdProperty) {
+                writer->Bool(b);
+            } else {
+
+            }
+            return true;
+        }
         bool Int(int i) { return true; }
         bool Uint(unsigned u) { return true; }
         bool Int64(int64_t i) { return true; }
@@ -81,7 +88,11 @@ private:
             return true;
         }
         bool String(const char* str, SizeType length, bool copy) {
-            writer->String(str, length, copy);
+            if (isCurrentKeyInRootIdProperty) {
+                writer->String(str, length, copy);
+            } else {
+
+            }
             return true;
         }
         bool StartObject() {
@@ -89,17 +100,40 @@ private:
             return true;
         }
         bool Key(const char* str, SizeType length, bool copy) {
-            isCurrentKeyIdProperty = false; // to make sure this is false whenever we enter this loop for a new key
+            isCurrentKeyInRootIdProperty = false; // to make sure this is false whenever we enter this loop for a new key
             currentKey = str;
             if (strcmp(rootSchema.idPropertyKey.c_str(), str) == 0) {
-                isCurrentKeyIdProperty = true;
+                isCurrentKeyInRootIdProperty = true;
                 mapIdValue = str;
+                writer->Key(str);
             } else {
                 if (find(rootSchema.properties.begin(), rootSchema.properties.end(), str) != rootSchema.properties.end()) {
                     writer->Key(str);
                 } else {
                     // This is either an association or collection
-                    writer->Key(str);
+                    if (rootSchema.associations.size() != 0) {
+                        if (rootSchema.associations.size() == 1) {
+
+                        } else {
+
+                        }
+                    }
+
+                    if (rootSchema.collections.size() != 0) {
+                        if (rootSchema.collections.size() == 1) {
+                            if (strcmp(rootSchema.collections.at(0).mapId.c_str(), str) == 0) {
+
+                            } else {
+
+                            }
+                        } else {
+                            for (auto it = rootSchema.collections.begin(); it != rootSchema.collections.end(); it++) {
+                                if (strcmp(rootSchema.collections.at(0).mapId.c_str(), str) == 0) {
+
+                                }
+                            }
+                        }
+                    }
                 }
             }
             return true;
