@@ -9,7 +9,9 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
+#include <rapidjson/prettywriter.h>
 #include "schema_parser.h"
+#include <set>
 
 using namespace rapidjson;
 using namespace std;
@@ -20,8 +22,7 @@ private:
     const char* columnPrefix;
     jjn::JsonSchema rootSchema;
     unordered_map<std::string, jjn::JsonSchema>* jsonSchemaMap;
-    StringBuffer jsonStringBuffer;
-    Writer<StringBuffer> *writer;
+    const char *resultString;
 
     void initialize(char* json, const char* schemaMapId, const char* columnPrefix, unordered_map<std::string, jjn::JsonSchema>* jsonSchemaMap) {
         try {
@@ -29,13 +30,12 @@ private:
             this->schemaMapId = schemaMapId;
             this->columnPrefix = columnPrefix;
             this->jsonSchemaMap = jsonSchemaMap;
-            writer = new Writer<StringBuffer>(jsonStringBuffer);
             console->info("JSON Mapper initialized");
             Reader reader;
-            JsonMappingsHandler handler(this->jsonSchemaMap, schemaMapId, writer);
+            JsonMappingsHandler handler(this->jsonSchemaMap, schemaMapId);
             StringStream ss(json);
             reader.Parse(ss, handler);
-            delete writer;
+            resultString = handler.getResultString();
         } catch (const spdlog::spdlog_ex &ex) {
             std::cout << "Log init failed: " << ex.what() << std::endl;
             exit(1);
@@ -46,11 +46,11 @@ private:
     private:
         jjn::JsonSchema rootSchema; // The schema object grabbed from the mapid passed in
         unordered_map<std::string, jjn::JsonSchema>* jsonSchemaMap;
-        Writer<StringBuffer>* writer;
+        Document dom;
         const char *schemaMapId;
-        bool isCurrentKeyInRootIdProperty = false; // This determines whether or not a value is in the root object or a sub object
-        string mapIdValue;
         string currentKey;
+        int currentKeyLength;
+        Value *domObjects;
 
         void setRootSchema() {
             for (auto it = jsonSchemaMap->begin(); it != jsonSchemaMap->end(); it++) {
@@ -63,20 +63,30 @@ private:
 
     public:
 
-        JsonMappingsHandler(unordered_map<string, jjn::JsonSchema> *jsonSchemaMap, const char *schemaMapId, Writer<StringBuffer> *writer) {
+        JsonMappingsHandler(unordered_map<string, jjn::JsonSchema> *jsonSchemaMap, const char *schemaMapId) {
             this->jsonSchemaMap = jsonSchemaMap;
             this->schemaMapId = schemaMapId;
-            this->writer = writer;
+            StringBuffer stringBuffer;
+            this->dom = Document();
             setRootSchema();
+        }
+
+        const char *getResultString() {
+            rapidjson::StringBuffer buffer;
+
+            buffer.Clear();
+
+            rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+            dom.Accept(writer);
+
+            return strdup( buffer.GetString() );
         }
 
         bool Null() { return true; }
         bool Bool(bool b) {
-            if (isCurrentKeyInRootIdProperty) {
-                writer->Bool(b);
-            } else {
-
-            }
+            Value value;
+            value.SetBool(b);
+            domObjects->AddMember(Value(currentKey.c_str(), dom.GetAllocator()).Move(), value, dom.GetAllocator());
             return true;
         }
         bool Int(int i) { return true; }
@@ -88,66 +98,29 @@ private:
             return true;
         }
         bool String(const char* str, SizeType length, bool copy) {
-            if (isCurrentKeyInRootIdProperty) {
-                writer->String(str, length, copy);
-            } else {
-
-            }
+            domObjects->AddMember(Value(currentKey.c_str(), dom.GetAllocator()).Move(), Value(str, dom.GetAllocator()).Move(), dom.GetAllocator());
+            const char* resultStr = getResultString();
             return true;
         }
         bool StartObject() {
-            writer->StartObject();
+            domObjects = new Value(kObjectType);
             return true;
         }
         bool Key(const char* str, SizeType length, bool copy) {
-            isCurrentKeyInRootIdProperty = false; // to make sure this is false whenever we enter this loop for a new key
             currentKey = str;
-            if (strcmp(rootSchema.idPropertyKey.c_str(), str) == 0) {
-                isCurrentKeyInRootIdProperty = true;
-                mapIdValue = str;
-                writer->Key(str);
-            } else {
-                if (find(rootSchema.properties.begin(), rootSchema.properties.end(), str) != rootSchema.properties.end()) {
-                    writer->Key(str);
-                } else {
-                    // This is either an association or collection
-                    if (rootSchema.associations.size() != 0) {
-                        if (rootSchema.associations.size() == 1) {
-
-                        } else {
-
-                        }
-                    }
-
-                    if (rootSchema.collections.size() != 0) {
-                        if (rootSchema.collections.size() == 1) {
-                            if (strcmp(rootSchema.collections.at(0).mapId.c_str(), str) == 0) {
-
-                            } else {
-
-                            }
-                        } else {
-                            for (auto it = rootSchema.collections.begin(); it != rootSchema.collections.end(); it++) {
-                                if (strcmp(rootSchema.collections.at(0).mapId.c_str(), str) == 0) {
-
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            currentKeyLength = length;
             return true;
         }
         bool EndObject(SizeType memberCount) {
-            writer->EndObject(memberCount);
+            dom.GetArray().PushBack(*domObjects, dom.GetAllocator());
+            delete domObjects;
             return true;
         }
         bool StartArray() {
-            writer->StartArray();
+            dom.SetArray();
             return true;
         }
         bool EndArray(SizeType elementCount) {
-            writer->EndArray(elementCount);
             return true;
         }
     };
@@ -163,7 +136,7 @@ public:
     }
 
     const char *getResult() {
-        return jsonStringBuffer.GetString();
+        return resultString;
     }
 };
 
