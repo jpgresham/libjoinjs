@@ -50,7 +50,10 @@ private:
         const char *schemaMapId;
         string currentKey;
         int currentKeyLength;
+        bool isCurrentKeyRootIdProperty; // If true, the key that is currently set is the map id of the root object
         Value *domObjects;
+        map<const char*, unsigned long> idPropertyMap; // This keeps a record of the root id properties placed in the list of objects.
+        bool doesObjectWithRootIdPropertyExist = false;
 
         void setRootSchema() {
             for (auto it = jsonSchemaMap->begin(); it != jsonSchemaMap->end(); it++) {
@@ -68,6 +71,7 @@ private:
             this->schemaMapId = schemaMapId;
             StringBuffer stringBuffer;
             this->dom = Document();
+            this->idPropertyMap = map<const char*, unsigned long>();
             setRootSchema();
         }
 
@@ -99,7 +103,14 @@ private:
         }
         bool String(const char* str, SizeType length, bool copy) {
             domObjects->AddMember(Value(currentKey.c_str(), dom.GetAllocator()).Move(), Value(str, dom.GetAllocator()).Move(), dom.GetAllocator());
-            const char* resultStr = getResultString();
+            if (isCurrentKeyRootIdProperty) {
+                if (idPropertyMap.find(currentKey.c_str()) == idPropertyMap.end()) {
+                    unsigned long val = idPropertyMap.size()+1;
+                    idPropertyMap.insert(make_pair(currentKey.c_str(), val));
+                } else {
+                    doesObjectWithRootIdPropertyExist = true;
+                }
+            }
             return true;
         }
         bool StartObject() {
@@ -109,10 +120,17 @@ private:
         bool Key(const char* str, SizeType length, bool copy) {
             currentKey = str;
             currentKeyLength = length;
+            isCurrentKeyRootIdProperty = false;
+            if (strcmp(rootSchema.idPropertyKey.c_str(), str) == 0) {
+                isCurrentKeyRootIdProperty = true;
+            }
             return true;
         }
         bool EndObject(SizeType memberCount) {
-            dom.GetArray().PushBack(*domObjects, dom.GetAllocator());
+            if (!doesObjectWithRootIdPropertyExist) {
+                dom.GetArray().PushBack(*domObjects, dom.GetAllocator());
+            }
+            doesObjectWithRootIdPropertyExist = false;
             delete domObjects;
             return true;
         }

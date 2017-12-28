@@ -21,7 +21,7 @@ private:
 char* readFileToString() {
     size_t length_;
     char *json_;
-    FILE* fp = fopen("/Users/jacobgresham/test/testjson.js", "r");
+    FILE* fp = fopen("/Users/jacobgresham/test/testjson-large.js", "r");
 
     if (!fp) {
         cout << "Unable to open test file" << endl;
