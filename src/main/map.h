@@ -49,11 +49,41 @@ private:
         unordered_map<std::string, jjn::JsonSchema>* jsonSchemaMap;
         Document dom;
         const char *schemaMapId;
-        string currentKey;
+
+        /*
+         * The current key value
+         * */
+        char *currentKey;
+
+        /*
+         * Keeps track of the string lengtho of the current key
+         * */
         int currentKeyLength;
-        bool isCurrentKeyRootIdProperty; // If true, the key that is currently set is the map id of the root object
-        Value *domObjects;
-        map<const char*, unsigned long> idPropertyMap; // This keeps a record of the root id properties placed in the list of objects.
+
+        /*
+         * If true, the key that is currently set is the map id of the root object
+         * */
+        bool isCurrentKeyRootIdProperty;
+
+        /*
+         * This holds all of the nested dom objects to be included in the root object
+         * */
+        Value *nestedDomObjects;
+
+        /*
+         * This keeps a record of the root id properties placed in the list of objects.
+         * */
+        map<const char*, unsigned long> idPropertyMap;
+
+        /*
+         * Keeps the key/value pair for nested objects when we still don't know what schema to follow
+         * (i.e., we have not iterated over the idpropertykey yet)
+         */
+        map<const char*, Value> nestedObjectKeyPairHolder;
+
+        /*
+         *
+         **/
         bool doesObjectWithRootIdPropertyExist = false;
 
         void setRootSchema() {
@@ -63,19 +93,6 @@ private:
                     break;
                 }
             }
-        }
-
-        template <typedef const char*>
-        bool idPropertyCheck() {
-            if (isCurrentKeyRootIdProperty) {
-                if (idPropertyMap.find(currentKey.c_str()) == idPropertyMap.end()) {
-                    unsigned long val = idPropertyMap.size()+1;
-                    idPropertyMap.insert(make_pair(currentKey.c_str(), val));
-                } else {
-                    doesObjectWithRootIdPropertyExist = true;
-                }
-            }
-            return true;
         }
 
     public:
@@ -104,7 +121,7 @@ private:
         bool Bool(bool b) {
             Value value;
             value.SetBool(b);
-            domObjects->AddMember(Value(currentKey.c_str(), dom.GetAllocator()).Move(), value, dom.GetAllocator());
+            nestedDomObjects->AddMember(Value(currentKey, dom.GetAllocator()).Move(), value, dom.GetAllocator());
             return true;
         }
         bool Int(int i) { return true; }
@@ -118,7 +135,7 @@ private:
         bool String(const char* str, SizeType length, bool copy) {
             // If true then the field/value belong in the root schema. Otherwise it belongs in a nested object
             if (find(rootSchema.properties.begin(), rootSchema.properties.end(), currentKey) != rootSchema.properties.end()) {
-                domObjects->AddMember(Value(currentKey.c_str(), dom.GetAllocator()).Move(), Value(str, dom.GetAllocator()).Move(), dom.GetAllocator());
+                nestedDomObjects->AddMember(Value(currentKey, dom.GetAllocator()).Move(), Value(str, dom.GetAllocator()).Move(), dom.GetAllocator());
             } else {
                 if (!rootSchema.collections.empty()) {
                     for (auto itr = rootSchema.collections.begin(); itr != rootSchema.collections.end(); itr++) {
@@ -126,13 +143,23 @@ private:
                     }
                 } else if (!rootSchema.associations.empty()) {
                     for (auto itr = rootSchema.associations.begin(); itr != rootSchema.associations.end(); itr++) {
-                        if (domObjects->HasMember(itr.base()->name.c_str())) {
-                            Value::MemberIterator member = domObjects->FindMember(itr.base()->name.c_str());
-                            member->value.AddMember(Value(currentKey.c_str(), dom.GetAllocator()).Move(), Value(str, dom.GetAllocator()).Move(), dom.GetAllocator());
+                        if (nestedDomObjects->HasMember(itr.base()->name.c_str())) {
+                            Value::MemberIterator member = nestedDomObjects->FindMember(itr.base()->name.c_str());
+                            member->value.AddMember(Value(currentKey, dom.GetAllocator()).Move(), Value(str, dom.GetAllocator()).Move(), dom.GetAllocator());
                         } else {
+
+                            /*for (auto aitr = jsonSchemaMap->begin(); aitr != jsonSchemaMap->end(); aitr++) {
+                                if (strcmp(aitr->second.mapId.c_str(), itr.base()->mapId.c_str()) == 0) {
+                                    cout << "Found the map!" << endl;
+                                }
+                            }*/
+
+                           /* if (find(rootSchema.associations.begin(), rootSchema.associations.end(), str) != rootSchema.associations.end()) {
+
+                            }*/
                             Value obj(kObjectType);
-                            obj.AddMember(Value(currentKey.c_str(), dom.GetAllocator()).Move(), Value(str, dom.GetAllocator()).Move(), dom.GetAllocator());
-                            domObjects->AddMember(Value(itr.base()->name.c_str(), dom.GetAllocator()).Move(), obj, dom.GetAllocator());
+                            obj.AddMember(Value(currentKey, dom.GetAllocator()).Move(), Value(str, dom.GetAllocator()).Move(), dom.GetAllocator());
+                            nestedDomObjects->AddMember(Value(itr.base()->name.c_str(), dom.GetAllocator()).Move(), obj, dom.GetAllocator());
                         }
                     }
                 } else {
@@ -140,9 +167,9 @@ private:
                 }
             }
             if (isCurrentKeyRootIdProperty) {
-                if (idPropertyMap.find(currentKey.c_str()) == idPropertyMap.end()) {
+                if (idPropertyMap.find(currentKey) == idPropertyMap.end()) {
                     unsigned long val = idPropertyMap.size()+1;
-                    idPropertyMap.insert(make_pair(currentKey.c_str(), val));
+                    idPropertyMap.insert(make_pair(currentKey, val));
                 } else {
                     doesObjectWithRootIdPropertyExist = true;
                 }
@@ -150,11 +177,11 @@ private:
             return true;
         }
         bool StartObject() {
-            domObjects = new Value(kObjectType);
+            nestedDomObjects = new Value(kObjectType);
             return true;
         }
         bool Key(const char* str, SizeType length, bool copy) {
-            currentKey = str;
+            strncpy(currentKey, str, length+1);
             currentKeyLength = length;
             isCurrentKeyRootIdProperty = false;
             if (strcmp(rootSchema.idPropertyKey.c_str(), str) == 0) {
@@ -164,10 +191,10 @@ private:
         }
         bool EndObject(SizeType memberCount) {
             if (!doesObjectWithRootIdPropertyExist) {
-                dom.GetArray().PushBack(*domObjects, dom.GetAllocator());
+                dom.GetArray().PushBack(*nestedDomObjects, dom.GetAllocator());
             }
             doesObjectWithRootIdPropertyExist = false;
-            delete domObjects;
+            delete nestedDomObjects;
             return true;
         }
         bool StartArray() {
