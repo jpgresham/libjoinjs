@@ -23,6 +23,7 @@ private:
     jjn::JsonSchema rootSchema;
     unordered_map<std::string, jjn::JsonSchema>* jsonSchemaMap;
     const char *resultString;
+    set<string> redBlackTree;
 
     void initialize(char* json, const char* schemaMapId, const char* columnPrefix, unordered_map<std::string, jjn::JsonSchema>* jsonSchemaMap) {
         try {
@@ -64,6 +65,19 @@ private:
             }
         }
 
+        template <typedef const char*>
+        bool idPropertyCheck() {
+            if (isCurrentKeyRootIdProperty) {
+                if (idPropertyMap.find(currentKey.c_str()) == idPropertyMap.end()) {
+                    unsigned long val = idPropertyMap.size()+1;
+                    idPropertyMap.insert(make_pair(currentKey.c_str(), val));
+                } else {
+                    doesObjectWithRootIdPropertyExist = true;
+                }
+            }
+            return true;
+        }
+
     public:
 
         JsonMappingsHandler(unordered_map<string, jjn::JsonSchema> *jsonSchemaMap, const char *schemaMapId) {
@@ -102,7 +116,29 @@ private:
             return true;
         }
         bool String(const char* str, SizeType length, bool copy) {
-            domObjects->AddMember(Value(currentKey.c_str(), dom.GetAllocator()).Move(), Value(str, dom.GetAllocator()).Move(), dom.GetAllocator());
+            // If true then the field/value belong in the root schema. Otherwise it belongs in a nested object
+            if (find(rootSchema.properties.begin(), rootSchema.properties.end(), currentKey) != rootSchema.properties.end()) {
+                domObjects->AddMember(Value(currentKey.c_str(), dom.GetAllocator()).Move(), Value(str, dom.GetAllocator()).Move(), dom.GetAllocator());
+            } else {
+                if (!rootSchema.collections.empty()) {
+                    for (auto itr = rootSchema.collections.begin(); itr != rootSchema.collections.end(); itr++) {
+
+                    }
+                } else if (!rootSchema.associations.empty()) {
+                    for (auto itr = rootSchema.associations.begin(); itr != rootSchema.associations.end(); itr++) {
+                        if (domObjects->HasMember(itr.base()->name.c_str())) {
+                            Value::MemberIterator member = domObjects->FindMember(itr.base()->name.c_str());
+                            member->value.AddMember(Value(currentKey.c_str(), dom.GetAllocator()).Move(), Value(str, dom.GetAllocator()).Move(), dom.GetAllocator());
+                        } else {
+                            Value obj(kObjectType);
+                            obj.AddMember(Value(currentKey.c_str(), dom.GetAllocator()).Move(), Value(str, dom.GetAllocator()).Move(), dom.GetAllocator());
+                            domObjects->AddMember(Value(itr.base()->name.c_str(), dom.GetAllocator()).Move(), obj, dom.GetAllocator());
+                        }
+                    }
+                } else {
+                    throw "UNABLE TO FIND A MATCHING SCHEMA FOR THE FIELD";
+                }
+            }
             if (isCurrentKeyRootIdProperty) {
                 if (idPropertyMap.find(currentKey.c_str()) == idPropertyMap.end()) {
                     unsigned long val = idPropertyMap.size()+1;

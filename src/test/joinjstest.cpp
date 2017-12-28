@@ -69,16 +69,6 @@ int main(int argc,  char *argv[]) {
         unordered_map<string, jjn::JsonSchema> jsonSchema = handler.jsonSchema();
         console->info("Completed parsing the schema for provided json input.");
 
-        for (auto it : jsonSchema) {
-            jjn::JsonSchema schema = it.second;
-            cout << it.first << endl;
-            cout << "Map Id: " << schema.mapId << endl;
-            cout << "Schema Key: " << schema.schemaKey << endl;
-            cout << "Id Property Key: " << schema.idPropertyKey << endl;
-            cout << "First property is: " << schema.properties.at(0) << endl;
-            cout << endl << endl;
-        }
-
         fclose(fp);
 
         FILE* fp2 = fopen("/Users/jacobgresham/test/schema.js", "r");
