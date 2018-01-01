@@ -86,16 +86,16 @@ namespace joinjs {
 
         void setValues(Value *value) {
             Value key(currentKey, dom.GetAllocator());
-            Type type = value->GetType();
-            if (type == kStringType) {
+            Type t = value->GetType();
+            if (value->GetType() == kStringType) {
                 this->nestedDomObjects->AddMember(key, *value, dom.GetAllocator());
-            } else if (type == kNumberType) {
+            } else if (value->GetType() == kNumberType) {
                 this->nestedDomObjects->AddMember(key, *value, dom.GetAllocator());
-            } else if (type == kTrueType) {
+            } else if (value->GetType() == kTrueType) {
                 this->nestedDomObjects->AddMember(key, *value, dom.GetAllocator());
-            } else if (type == kFalseType) {
+            } else if (value->GetType() == kFalseType) {
                 this->nestedDomObjects->AddMember(key, *value, dom.GetAllocator());
-            } else if (type == kNullType) {
+            } else if (value->GetType() == kNullType) {
                 this->nestedDomObjects->AddMember(key, *value, dom.GetAllocator());
             } else {
                 char* buffer;
