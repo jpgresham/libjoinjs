@@ -54,20 +54,14 @@ namespace joinjs {
         bool isCurrentKeyRootIdProperty;
 
         /*
-         * This holds all of the nested dom objects to be included in the root object
+         * This holds all of the objects in the array to be returned
          * */
-        Value *nestedDomObjects;
+        Value *domObjects;
 
         /*
          * This keeps a record of the root id properties placed in the list of objects.
          * */
         Value rootIdPropertyValueMap;
-
-        /*
-         * Keeps the key/value pair for nested objects when we still don't know what schema to follow
-         * (i.e., we have not iterated over the idpropertykey yet)
-         */
-        map<const char*, Value> *nestedObjectKeyPairHolder;
 
         /*
          *
@@ -85,25 +79,6 @@ namespace joinjs {
 
 
         void setValues(Value *value) {
-            Value key(currentKey, dom.GetAllocator());
-            Type t = value->GetType();
-            if (value->GetType() == kStringType) {
-                this->nestedDomObjects->AddMember(key, *value, dom.GetAllocator());
-            } else if (value->GetType() == kNumberType) {
-                this->nestedDomObjects->AddMember(key, *value, dom.GetAllocator());
-            } else if (value->GetType() == kTrueType) {
-                this->nestedDomObjects->AddMember(key, *value, dom.GetAllocator());
-            } else if (value->GetType() == kFalseType) {
-                this->nestedDomObjects->AddMember(key, *value, dom.GetAllocator());
-            } else if (value->GetType() == kNullType) {
-                this->nestedDomObjects->AddMember(key, *value, dom.GetAllocator());
-            } else {
-                char* buffer;
-                snprintf(buffer, sizeof(buffer), "Could not find mapping for value %s", value->GetString());
-                std::string buffAsStdStr = buffer;
-                throw buffAsStdStr;
-            }
-
             /**
              * This needs to be changed. The root id property map should be changed to a set, and we should keep a variable around with the root id property
              * Or just reference it from the root schema map. Then if the current key is the root id property, do a check against the set to see if we have
@@ -112,10 +87,85 @@ namespace joinjs {
 
             if (isCurrentKeyRootIdProperty) {
                 if (!doesIdPropertyValueExist(value)) {
-                    rootIdPropertyValueMap.GetArray().PushBack(*value, dom.GetAllocator());
+                    Value v;
+                    if (kNumberType == value->GetType()) {
+                        if (value->IsInt()) {
+                            v.SetInt(value->GetInt());
+                        } else if (value->IsInt64()) {
+                            v.SetInt64(value->GetInt64());
+                        } else if (value->IsUint()) {
+                            v.SetUint(value->GetUint());
+                        } else if (value->IsUint64()) {
+                            v.SetUint64(value->GetUint64());
+                        } else if (value->IsFloat() || value->IsLosslessFloat()) {
+                            v.SetFloat(value->GetFloat());
+                        } else if (value->IsDouble() || value->IsLosslessDouble()) {
+                            v.SetDouble(value->GetDouble());
+                        } else {
+                            throw "ERROR ON NUMBER COMPARISON";
+                        }
+                    } else if (kStringType == value->GetType()) {
+                        //v.SetString(value->GetString());
+                    } else if (kTrueType == value->GetType()) {
+                        v.SetBool(value->GetBool());
+                    } else if (kFalseType == value->GetType()) {
+                        v.SetBool(value->GetBool());
+                    } else if (kNullType == value->GetType()) {
+                        v.SetNull();
+                    } else {
+                        throw "Unable to find the proper type for the value";
+                    }
+                    rootIdPropertyValueMap.GetArray().PushBack(v, dom.GetAllocator());
                 } else {
                     doesObjectWithRootIdPropertyExist = true;
                 }
+            }
+            Value key(currentKey, dom.GetAllocator());
+            Type t = value->GetType();
+            bool includeInRoot = false;
+            if (find(rootSchema.properties.begin(), rootSchema.properties.end(), currentKey) != rootSchema.properties.end()) {
+                includeInRoot = true;
+            } else {
+                if (!rootSchema.associations.empty()) {
+                    for (auto itr = rootSchema.associations.begin(); itr != rootSchema.associations.end(); itr++) {
+                        Associations *associations = itr.base();
+                        if (find(jsonSchemaMap->at(associations->mapId).properties.begin(), jsonSchemaMap->at(associations->mapId).properties.end(), currentKey) != jsonSchemaMap->at(associations->mapId).properties.end()) {
+                            cout << "Key " << currentKey << " was found in " << associations->mapId << endl;
+                        }
+                    }
+                }
+
+                if (!rootSchema.collections.empty()) {
+                    for (auto itr = rootSchema.collections.begin(); itr != rootSchema.collections.end(); itr++) {
+                        Collections *collections = itr.base();
+                    }
+                }
+            }
+            if (value->GetType() == kStringType) {
+                if (includeInRoot) {
+                    this->domObjects->AddMember(key, *value, dom.GetAllocator());
+                }
+            } else if (value->GetType() == kNumberType) {
+                if (includeInRoot) {
+                    this->domObjects->AddMember(key, *value, dom.GetAllocator());
+                }
+            } else if (value->GetType() == kTrueType) {
+                if (includeInRoot) {
+                    this->domObjects->AddMember(key, *value, dom.GetAllocator());
+                }
+            } else if (value->GetType() == kFalseType) {
+                if (includeInRoot) {
+                    this->domObjects->AddMember(key, *value, dom.GetAllocator());
+                }
+            } else if (value->GetType() == kNullType) {
+                if (includeInRoot) {
+                    this->domObjects->AddMember(key, *value, dom.GetAllocator());
+                }
+            } else {
+                char* buffer;
+                snprintf(buffer, sizeof(buffer), "Could not find mapping for value %s", value->GetString());
+                std::string buffAsStdStr = buffer;
+                throw buffAsStdStr;
             }
         }
 
@@ -125,7 +175,6 @@ namespace joinjs {
                     Type type = value->GetType();
                     Value *_v = itr;
                     Type t = _v->GetType();
-                    unsigned int i = _v->GetUint();
                     if (type == _v->GetType()) {
                         if (kNumberType == type) {
                             if (value->IsInt() && _v->IsInt()) {
@@ -151,12 +200,10 @@ namespace joinjs {
                             if (strcmp(_v->GetString(), value->GetString()) == 0) {
                                 return true;
                             }
-                        } else if (kTrueType == type) {
-
-                        } else if (kFalseType == type) {
-
+                        } else if (kTrueType == type || kFalseType == type) {
+                            return value->GetBool() == _v->GetBool();
                         } else if (kNullType == type) {
-
+                            return value->IsNull() == _v->IsNull();
                         } else {
 
                         }
@@ -264,8 +311,7 @@ namespace joinjs {
         }
 
         bool StartObject() {
-            nestedDomObjects = new Value(kObjectType);
-            nestedObjectKeyPairHolder = new map<const char*, Value>;
+            domObjects = new Value(kObjectType);
             return true;
         }
 
@@ -282,11 +328,10 @@ namespace joinjs {
 
         bool EndObject(SizeType memberCount) {
             if (!doesObjectWithRootIdPropertyExist) {
-                dom.GetArray().PushBack(*nestedDomObjects, dom.GetAllocator());
+                dom.GetArray().PushBack(*domObjects, dom.GetAllocator());
             }
             doesObjectWithRootIdPropertyExist = false;
-            delete nestedObjectKeyPairHolder;
-            delete nestedDomObjects;
+            delete domObjects;
             return true;
         }
 
