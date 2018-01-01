@@ -17,7 +17,7 @@
 using namespace std;
 using namespace rapidjson;
 
-namespace jjn {
+namespace joinjs {
 
     struct Associations {
         string name;

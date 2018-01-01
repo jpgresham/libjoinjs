@@ -59,14 +59,14 @@ int main(int argc,  char *argv[]) {
 
         char readBuffer[sz + 1];
 
-        jjn::SchemaJsonHandler handler = handler.getInstance();
+        joinjs::SchemaJsonHandler handler = handler.getInstance();
         rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
 
         rapidjson::Reader reader;
         reader.Parse(is, handler);
 
 
-        unordered_map<string, jjn::JsonSchema> jsonSchema = handler.jsonSchema();
+        unordered_map<string, joinjs::JsonSchema> jsonSchema = handler.jsonSchema();
         console->info("Completed parsing the schema for provided json input.");
 
         fclose(fp);

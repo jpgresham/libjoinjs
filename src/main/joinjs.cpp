@@ -6,12 +6,12 @@
 
 using namespace std;
 
-namespace jjn {
+namespace joinjs {
     int Map(char *inputJson) {
         try {
             auto console = spdlog::stdout_color_mt("console");
             console->info("Starting mapping for json string.");
-            jjn::SchemaJsonHandler jsonHandler = jsonHandler.getInstance();
+            joinjs::SchemaJsonHandler jsonHandler = jsonHandler.getInstance();
             Reader reader;
             StringStream ss(inputJson);
             reader.Parse(ss, jsonHandler);
