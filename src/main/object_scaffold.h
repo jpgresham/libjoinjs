@@ -20,7 +20,7 @@ namespace joinjs {
     enum nest_type{ROOT, ASSOCIATION, COLLECTION};
 
     struct ObjectProperties {
-        const char* key;
+        const char* name;
         Value domObject;
         const char* MapId;
         const char* IdProperty;
@@ -58,11 +58,6 @@ namespace joinjs {
         }
 
         bool Null() {
-            if (scaffoldKeyCreated) {
-
-            } else {
-
-            }
             return true;
         }
 
@@ -123,17 +118,34 @@ namespace joinjs {
                     // Next, add a map to the associations and collections the schema has
                     if (!rootSchema.associations.empty()) {
                         for (auto itr = rootSchema.associations.begin(); itr != rootSchema.associations.end(); itr++) {
+                            const char* name = itr.base()->name.c_str();
                             Value v(kNullType);
                             Value k(kStringType);
-                            k.SetString(itr.base()->name.c_str(), itr.base()->name.length());
+                            k.SetString(name, itr.base()->name.length());
                             this->scaffoldObjectSet->at(schemaMapId).domObject.AddMember(k, v.Move(), document.GetAllocator());
+                            ObjectProperties valObj = ObjectProperties();
+                            valObj.domObject = Value(kObjectType);
+                            valObj.MapId = itr.base()->mapId.c_str();
+                            valObj.Placement = ASSOCIATION;
+                            valObj.name = name;
+                            scaffoldObjectSet->insert(make_pair(name, ObjectProperties()));
+                            scaffoldObjectSet->at(name).domObject = Value(kArrayType);
+                            scaffoldObjectSet->at(name).MapId = itr.base()->mapId.c_str();
+                            scaffoldObjectSet->at(name).Placement = ASSOCIATION;
+                            scaffoldObjectSet->at(name).name = name;
                         }
                     } else if (!rootSchema.collections.empty()) {
                         for (auto itr = rootSchema.collections.begin(); itr != rootSchema.collections.end(); itr++) {
+                            const char* name = itr.base()->name.c_str();
                             Value v(kNullType);
                             Value k(kStringType);
-                            k.SetString(itr.base()->name.c_str(), itr.base()->name.length());
+                            k.SetString(name, itr.base()->name.length());
                             this->scaffoldObjectSet->at(schemaMapId).domObject.AddMember(k, v.Move(), document.GetAllocator());
+                            scaffoldObjectSet->insert(make_pair(name, ObjectProperties()));
+                            scaffoldObjectSet->at(name).domObject = Value(kArrayType);
+                            scaffoldObjectSet->at(name).MapId = itr.base()->mapId.c_str();
+                            scaffoldObjectSet->at(name).Placement = COLLECTION;
+                            scaffoldObjectSet->at(name).name = name;
                         }
                     }
                 }
@@ -155,7 +167,7 @@ namespace joinjs {
         bool EndObject(SizeType memberCount) {
             // The end of the first object is where we stop because we will have created the scaffold needed.
             for (auto itr = scaffoldObjectSet->begin(); itr != scaffoldObjectSet->end(); itr++) {
-                
+
             }
             delete scaffoldObjectSet;
             return false;
