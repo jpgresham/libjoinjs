@@ -34,7 +34,7 @@ private:
             this->jsonSchemaMap = jsonSchemaMap;
             console->info("JSON Mapper initialized");
             Reader reader;
-            JsonMappingsHandler handler(this->jsonSchemaMap, schemaMapId);
+            JsonMappingsHandler handler(json, this->jsonSchemaMap, schemaMapId);
             StringStream ss(json);
             //reader.Parse(ss, rootHandler); // To set the variables for the primary handler
             reader.Parse(ss, handler);
