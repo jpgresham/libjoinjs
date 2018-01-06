@@ -105,13 +105,6 @@ int main(int argc,  char *argv[]) {
 
         char* json = readFileToString();
 
-        for (auto it = jsonSchema.begin(); it != jsonSchema.end(); it++) {
-            if (strcmp(it->second.mapId.c_str(), "eventMembersMap") == 0) {
-                JsonSchema &rootSchema = it->second; // set the root schema object
-                break;
-            }
-        }
-
         JsonMapper jsonMapper(json, "eventMembersMap", &jsonSchema);
 
         const char* result = jsonMapper.getResult();

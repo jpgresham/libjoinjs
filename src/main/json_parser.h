@@ -22,15 +22,22 @@ namespace joinjs {
     class JsonMappingsHandler : BaseReaderHandler<UTF8<>, JsonMappingsHandler> {
     private:
         ObjectScaffoldHandler *scaffold;
+        Document document;
+        string schemaMapId;
 
     public:
 
         JsonMappingsHandler(const char *json, joinjs::JSON_SCHEMA_MAP *jsonSchemaMap, const char *schemaMapId) {
+            this->schemaMapId = string(schemaMapId);
             this->scaffold = new ObjectScaffoldHandler(json, jsonSchemaMap, schemaMapId);
             Reader reader;
             StringStream ss(json);
             reader.Parse(ss, *scaffold);
-            delete scaffold;
+            document = Document();
+        }
+
+        const char* getResultString() {
+            return scaffold->getResultString(schemaMapId.c_str());
         }
 
         void setString(const char* scaffoldKey, const char* valueKey, const char* string, int length) {
@@ -124,10 +131,6 @@ namespace joinjs {
 
         bool EndArray(SizeType elementCount) {
             return true;
-        }
-
-        const char *getResultString() {
-            return "[]";
         }
     };
 }
