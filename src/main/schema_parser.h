@@ -230,6 +230,8 @@ namespace joinjs {
             insideAssociationsArray = false;
             insidePropertiesArray = false;
             insideCollectionsArray = false;
+            associationsObjCount = 0;
+            collectionsObjCount = 0;
             return true;
         }
 
