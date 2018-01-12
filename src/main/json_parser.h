@@ -55,7 +55,6 @@ namespace joinjs {
                     auto it = this->nestedObject->find(key);
                     if (it != this->nestedObject->end()) {
                         didFind = true;
-
                         if (itr->second->Placement == ASSOCIATION) {
                             this->nestedObject->find(key)->second.AddMember(Value(kStringType).SetString(currentKey, currentKeyLength, document.GetAllocator()), Value(kStringType).SetString(string, length, document.GetAllocator()), document.GetAllocator());
                         } else if (itr->second->Placement == COLLECTION) {
@@ -210,8 +209,14 @@ namespace joinjs {
             if (nestedObject->size() > 0) {
                 for (auto it = nestedObject->begin(); it != nestedObject->end(); it++) {
                     const char* idProperty = this->scaffold->getScaffoldObjectSet()->find(it->first)->second->IdProperty.c_str();
-                    this->currentScaffold.get()->domObject.AddMember(Value(kStringType).SetString(it->first.c_str(), it->first.length(), document.GetAllocator()).Move(), it->second.Move(), document.GetAllocator());
-                    this->currentScaffold.get()->domObject.RemoveMember(this->currentScaffold.get()->domObject.FindMember(it->first.c_str()));
+                    if (it->second.HasMember(idProperty)) {
+                        this->currentScaffold.get()->domObject.AddMember(
+                                Value(kStringType).SetString(it->first.c_str(), it->first.length(),
+                                                             document.GetAllocator()).Move(), it->second.Move(),
+                                document.GetAllocator());
+                        this->currentScaffold.get()->domObject.RemoveMember(
+                                this->currentScaffold.get()->domObject.FindMember(it->first.c_str()));
+                    }
                 }
             }
             cout << GetJsonText(&this->currentScaffold.get()->domObject) << endl;

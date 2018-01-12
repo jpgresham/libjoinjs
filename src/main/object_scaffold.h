@@ -126,7 +126,7 @@ namespace joinjs {
         }
 
         bool Key(const char *str, SizeType length, bool copy) {
-            if (find(rootSchema.properties.begin(), rootSchema.properties.end(), str) != rootSchema.properties.end()) {
+            if (find(rootSchema.properties.begin(), rootSchema.properties.end(), str) != rootSchema.properties.end() || (strcmp(rootSchema.idPropertyKey.c_str(), str) == 0)) {
                 // We fpund this key in the root schema, so try to get that from the object thingy
                 auto it = this->scaffoldObjectSet.find(schemaMapId);
                 if (it != this->scaffoldObjectSet.end()) {
@@ -189,7 +189,7 @@ namespace joinjs {
                     }
                 }
             } else {
-                // Property probably exists as a collection or association
+                // Property probably exists as an idPropertyKey, collection or association
                 if (!rootSchema.associations.empty()) {
                     for (auto itr = rootSchema.associations.begin(); itr != rootSchema.associations.end(); itr++) {
 
@@ -218,10 +218,6 @@ namespace joinjs {
 
         bool EndArray(SizeType elementCount) {
             return true;
-        }
-
-        void CleanUp() {
-            //delete scaffoldObjectSet;
         }
 
         void displayVars() {
