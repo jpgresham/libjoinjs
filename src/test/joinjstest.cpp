@@ -21,7 +21,7 @@ private:
 char* readFileToString() {
     size_t length_;
     char *json_;
-    FILE* fp = fopen("/Users/jacobgresham/test/testjson.js", "r");
+    FILE* fp = fopen(string(getenv("HOME")).append("/test/testjson.js").c_str(), "r");
 
     if (!fp) {
         cout << "Unable to open test file" << endl;
@@ -43,7 +43,11 @@ int main(int argc,  char *argv[]) {
 
         console->info("Testing mapping for JSON");
 
-        FILE* fp = fopen("/Users/jacobgresham/test/schema.js", "r");
+        string homeDir = string(getenv("HOME"));
+
+        homeDir.append("/test/schema.js");
+
+        FILE* fp = fopen(homeDir.c_str(), "r");
 
         if (!fp) {
             console->error("Unable to open file");
@@ -71,7 +75,7 @@ int main(int argc,  char *argv[]) {
 
         fclose(fp);
 
-        FILE* fp2 = fopen("/Users/jacobgresham/test/schema.js", "r");
+        FILE* fp2 = fopen(homeDir.c_str(), "r");
 
         if (!fp2) {
             console->error("Unable to open test file");
@@ -109,7 +113,7 @@ int main(int argc,  char *argv[]) {
 
         const char* result = jsonMapper.getResult();
 
-        cout << "THE RESULT JSON IS: " << endl << result << endl;
+        //cout << "THE RESULT JSON IS: " << endl << result << endl;
 
 
     } catch (const spdlog::spdlog_ex &ex) {

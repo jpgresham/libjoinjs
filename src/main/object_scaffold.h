@@ -30,7 +30,7 @@ namespace joinjs {
 
     class ObjectScaffoldHandler : BaseReaderHandler<UTF8<>, ObjectScaffoldHandler> {
     private:
-        map<string, ObjectProperties> scaffoldObjectSet;
+        map<string, ObjectProperties*> scaffoldObjectSet;
         JSON_SCHEMA_MAP *jsonSchemaMap;
         JsonSchema rootSchema;
         const char* schemaMapId;
@@ -54,11 +54,11 @@ namespace joinjs {
             this->schemaMapId = schemaMapId;
             this->scaffoldKeyCreated = false;
             this->scaffoldKey = string(schemaMapId);
-            this->scaffoldObjectSet = map<string, ObjectProperties>();
+            this->scaffoldObjectSet = map<string, ObjectProperties*>();
             setRootSchema();
         }
 
-        map<string, ObjectProperties> *getScaffoldObjectSet() {
+        map<string, ObjectProperties*> *getScaffoldObjectSet() {
             return &scaffoldObjectSet;
         };
 
@@ -66,7 +66,7 @@ namespace joinjs {
             bool found = false;
             for (auto itr = scaffoldObjectSet.begin(); itr != scaffoldObjectSet.end(); itr++) {
                 if (strcmp(itr->first.c_str(), schemaMapId) == 0) {
-                    document.CopyFrom(scaffoldObjectSet.at(schemaMapId).domObject, document.GetAllocator());
+                    document.CopyFrom(scaffoldObjectSet.at(schemaMapId)->domObject, document.GetAllocator());
                     found = true;
                     break;
                 }
@@ -134,17 +134,17 @@ namespace joinjs {
                     Value v(kNullType);
                     Value k(kStringType);
                     k.SetString(str, length, document.GetAllocator());
-                    this->scaffoldObjectSet.at(schemaMapId).domObject.AddMember(k.Move(), v.Move(), document.GetAllocator());
+                    this->scaffoldObjectSet.at(schemaMapId)->domObject.AddMember(k.Move(), v.Move(), document.GetAllocator());
                 } else {
                     // Create a schema object and add the key to it
-                    this->scaffoldObjectSet.insert(make_pair(schemaMapId, ObjectProperties()));
-                    this->scaffoldObjectSet.at(schemaMapId).domObject = Value(kObjectType);
+                    this->scaffoldObjectSet.insert(make_pair(schemaMapId, new ObjectProperties()));
+                    this->scaffoldObjectSet.at(schemaMapId)->domObject = Value(kObjectType);
                     Value v(kNullType);
                     Value k(kStringType);
                     k.SetString(str, length, document.GetAllocator());
-                    this->scaffoldObjectSet.at(schemaMapId).domObject.AddMember(k.Move(), v.Move(), document.GetAllocator());
-                    this->scaffoldObjectSet.at(schemaMapId).MapId = rootSchema.mapId;
-                    this->scaffoldObjectSet.at(schemaMapId).IdProperty = rootSchema.idPropertyKey;
+                    this->scaffoldObjectSet.at(schemaMapId)->domObject.AddMember(k.Move(), v.Move(), document.GetAllocator());
+                    this->scaffoldObjectSet.at(schemaMapId)->MapId = rootSchema.mapId;
+                    this->scaffoldObjectSet.at(schemaMapId)->IdProperty = rootSchema.idPropertyKey;
                     // Next, add a map to the associations and collections the schema has
                     if (!rootSchema.associations.empty()) {
                         for (auto itr = rootSchema.associations.begin(); itr != rootSchema.associations.end(); itr++) {
@@ -152,17 +152,25 @@ namespace joinjs {
                             Value v(kNullType);
                             Value k(kStringType);
                             k.SetString(name.c_str(), itr.base()->name.length(), document.GetAllocator());
-                            this->scaffoldObjectSet.at(schemaMapId).domObject.AddMember(k.Move(), v.Move(), document.GetAllocator());
+                            this->scaffoldObjectSet.at(schemaMapId)->domObject.AddMember(k.Move(), v.Move(), document.GetAllocator());
                             ObjectProperties valObj = ObjectProperties();
                             valObj.domObject = Value(kObjectType);
                             valObj.MapId = itr.base()->mapId;
+                            auto it = find_if(jsonSchemaMap->begin(), jsonSchemaMap->end(), [=] (pair<std::string, joinjs::JsonSchema> const& f) {
+                                return (f.second.mapId == itr.base()->mapId);
+                            });
+                            if (it == jsonSchemaMap->end()) {
+                                throw "Could not find value in schema map!";
+                            }
+                            valObj.IdProperty = jsonSchemaMap->at(it->second.schemaKey).idPropertyKey;
                             valObj.Placement = ASSOCIATION;
                             valObj.name = name;
-                            scaffoldObjectSet.insert(make_pair(name, ObjectProperties()));
-                            scaffoldObjectSet.at(name).domObject = Value(kObjectType);
-                            scaffoldObjectSet.at(name).MapId = itr.base()->mapId.c_str();
-                            scaffoldObjectSet.at(name).Placement = ASSOCIATION;
-                            scaffoldObjectSet.at(name).name = name;
+                            scaffoldObjectSet.insert(make_pair(name, new ObjectProperties()));
+                            scaffoldObjectSet.at(name)->domObject = Value(kObjectType);
+                            scaffoldObjectSet.at(name)->MapId = itr.base()->mapId.c_str();
+                            scaffoldObjectSet.at(name)->IdProperty = jsonSchemaMap->at(it->second.schemaKey).idPropertyKey;
+                            scaffoldObjectSet.at(name)->Placement = ASSOCIATION;
+                            scaffoldObjectSet.at(name)->name = name;
                         }
                     } else if (!rootSchema.collections.empty()) {
                         for (auto itr = rootSchema.collections.begin(); itr != rootSchema.collections.end(); itr++) {
@@ -170,12 +178,13 @@ namespace joinjs {
                             Value v(kNullType);
                             Value k(kStringType);
                             k.SetString(name.c_str(), itr.base()->name.length(), document.GetAllocator());
-                            this->scaffoldObjectSet.at(schemaMapId).domObject.AddMember(k.Move(), v.Move(), document.GetAllocator());
-                            scaffoldObjectSet.insert(make_pair(name, ObjectProperties()));
-                            scaffoldObjectSet.at(name).domObject = Value(kArrayType);
-                            scaffoldObjectSet.at(name).MapId = itr.base()->mapId;
-                            scaffoldObjectSet.at(name).Placement = COLLECTION;
-                            scaffoldObjectSet.at(name).name = name;
+                            this->scaffoldObjectSet.at(schemaMapId)->domObject.AddMember(k.Move(), v.Move(), document.GetAllocator());
+                            scaffoldObjectSet.insert(make_pair(name, new ObjectProperties()));
+                            scaffoldObjectSet.at(name)->domObject = Value(kArrayType);
+                            scaffoldObjectSet.at(name)->MapId = itr.base()->mapId;
+                            scaffoldObjectSet.at(name)->IdProperty = jsonSchemaMap->at(name).idPropertyKey;
+                            scaffoldObjectSet.at(name)->Placement = COLLECTION;
+                            scaffoldObjectSet.at(name)->name = name;
                         }
                     }
                 }
@@ -196,7 +205,7 @@ namespace joinjs {
 
         bool EndObject(SizeType memberCount) {
             // The end of the first object is where we stop because we will have created the scaffold needed.
-            displayVars();
+            //displayVars();
             for (auto itr = scaffoldObjectSet.begin(); itr != scaffoldObjectSet.end(); itr++) {
 
             }
@@ -217,7 +226,7 @@ namespace joinjs {
 
         void displayVars() {
             for (auto itr = scaffoldObjectSet.begin(); itr != scaffoldObjectSet.end(); itr++) {
-                ObjectProperties *obj = &itr->second;
+                ObjectProperties *obj = itr->second;
                 cout << "The name is: " << obj->name << endl;
                 cout << "The MAPID is: " << obj->MapId << endl;
                 cout << "The object is: " << obj->Placement << endl;
