@@ -113,7 +113,7 @@ int main(int argc,  char *argv[]) {
 
         const char* result = jsonMapper.getResult();
 
-        //cout << "THE RESULT JSON IS: " << endl << result << endl;
+        cout << "THE RESULT JSON IS: " << endl << result << endl;
 
 
     } catch (const spdlog::spdlog_ex &ex) {

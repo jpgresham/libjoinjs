@@ -24,7 +24,7 @@ private:
     const char* columnPrefix;
     joinjs::JsonSchema rootSchema;
     unordered_map<std::string, joinjs::JsonSchema>* jsonSchemaMap;
-    const char *resultString;
+    const char* resultString;
 
     void initialize(char* json, const char* schemaMapId, const char* columnPrefix, unordered_map<std::string, joinjs::JsonSchema>* jsonSchemaMap) {
         try {
@@ -36,7 +36,6 @@ private:
             Reader reader;
             JsonMappingsHandler handler(json, this->jsonSchemaMap, schemaMapId);
             StringStream ss(json);
-            //reader.Parse(ss, rootHandler); // To set the variables for the primary handler
             reader.Parse(ss, handler);
             resultString = handler.getResultString();
         } catch (const spdlog::spdlog_ex &ex) {

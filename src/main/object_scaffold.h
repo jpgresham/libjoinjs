@@ -17,11 +17,10 @@ using namespace std;
 
 namespace joinjs {
 
-    enum nest_type{ROOT, ASSOCIATION, COLLECTION};
-
     struct ObjectProperties {
         string name;
         Value domObject;
+        char *data;
         string MapId;
         string IdProperty;
         string ColumnID;
@@ -207,7 +206,18 @@ namespace joinjs {
             // The end of the first object is where we stop because we will have created the scaffold needed.
             //displayVars();
             for (auto itr = scaffoldObjectSet.begin(); itr != scaffoldObjectSet.end(); itr++) {
+                Document doc;
+                doc.CopyFrom(itr->second->domObject, document.GetAllocator());
+                rapidjson::StringBuffer buffer;
 
+                buffer.Clear();
+
+                rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+                doc.Accept(writer);
+                const char* data = buffer.GetString();
+                size_t len = strlen(data);
+                itr->second->data = static_cast<char *>(calloc(sizeof(char), len));
+                strcpy(itr->second->data, data);
             }
             return false;
         }

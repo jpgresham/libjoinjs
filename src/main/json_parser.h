@@ -13,7 +13,7 @@
 #include "schema_parser.h"
 #include "types.h"
 #include "object_scaffold.h"
-#include <pcre.h>
+#include <pcrecpp.h>
 
 using namespace std;
 using namespace rapidjson;
@@ -22,158 +22,109 @@ namespace joinjs {
 
     class JsonMappingsHandler : BaseReaderHandler<UTF8<>, JsonMappingsHandler> {
     private:
+
+        void pcre_match(const char *aStrRegex, const char* inputStr) {
+            //pcrecpp::RE re(string(aStrRegex));
+        }
+
+        struct ObjProps {
+            const char* data;
+
+            nest_type type;
+            const char* idProperty;
+            const char* name;
+        };
+
+        struct id_types {
+            const char* type;
+            int i_32;
+            unsigned int ui_32;
+            long i_64;
+            unsigned long ui_64;
+            const char* str;
+            bool bl;
+            float flt;
+            double dbl;
+        };
+
         ObjectScaffoldHandler *scaffold;
-        map<string, Value> *nestedObject;
-        unique_ptr<ObjectProperties> currentScaffold;
-        Document document;
+        char* documentString;
+        unique_ptr<map<const char*, ObjProps>> nestedObjects; // Key is map name,
+        vector<const char*> *documentsArray;
+        vector<id_types*> *spentIds;
         string schemaMapId;
         char* currentKey;
         int currentKeyLength;
+        JSON_SCHEMA_MAP *jsonSchemaMap;
+        JsonSchema *currentSchema;
+
+        JsonSchema *getCurrentSchema() {
+            for (auto itr = jsonSchemaMap->begin(); itr != jsonSchemaMap->end(); itr++) {
+                if (strcmp(itr->second.mapId.c_str(), schemaMapId.c_str()) == 0) {
+                    return &itr->second;
+                }
+            }
+            return nullptr;
+        }
+
+        struct get_by_map_id
+        {
+            get_by_map_id( string mapId ) : _map_id(mapId) {}
+            bool operator()( const std::pair<std::string, joinjs::JsonSchema>& v ) const
+            {
+                return v.second.mapId == _map_id;
+            }
+        private:
+            string _map_id;
+        };
 
     public:
 
         JsonMappingsHandler(const char *json, joinjs::JSON_SCHEMA_MAP *jsonSchemaMap, const char *schemaMapId) {
             this->schemaMapId = string(schemaMapId);
+            this->jsonSchemaMap = jsonSchemaMap;
+            this->currentSchema = getCurrentSchema();
             this->scaffold = new ObjectScaffoldHandler(json, jsonSchemaMap, schemaMapId);
+            this->documentsArray = new vector<const char*>();
+            this->spentIds = new vector<id_types*>();
             Reader reader;
             StringStream ss(json);
             reader.Parse(ss, *scaffold);
-            document = Document();
         }
 
-        const char* getResultString() {
-            return scaffold->getResultString(schemaMapId.c_str());
-        }
-
-        void setString(const char* scaffoldKey, const char* string, int length) {
-            if (this->currentScaffold.get()->domObject.HasMember(currentKey)) {
-                this->currentScaffold.get()->domObject.FindMember(currentKey)->value.SetString(string, length, document.GetAllocator());
-            } else {
-                bool didFind = false;
-                for (auto itr = this->scaffold->getScaffoldObjectSet()->begin(); itr != this->scaffold->getScaffoldObjectSet()->end(); itr++) {
-                    const char* key = itr->second->name.c_str();
-                    auto it = this->nestedObject->find(key);
-                    if (it != this->nestedObject->end()) {
-                        didFind = true;
-                        if (itr->second->Placement == ASSOCIATION) {
-                            this->nestedObject->find(key)->second.AddMember(Value(kStringType).SetString(currentKey, currentKeyLength, document.GetAllocator()), Value(kStringType).SetString(string, length, document.GetAllocator()), document.GetAllocator());
-                        } else if (itr->second->Placement == COLLECTION) {
-
-                        }
-                        break;
-                    } else {
-                        if (itr->second->Placement == ASSOCIATION) {
-                            this->nestedObject->insert(make_pair(key, Value(kObjectType)));
-                            this->nestedObject->find(key)->second.AddMember(Value(kStringType).SetString(currentKey, currentKeyLength, document.GetAllocator()), Value(kStringType).SetString(string, length, document.GetAllocator()), document.GetAllocator());
-                        } else if (itr->second->Placement == COLLECTION) {
-                            this->nestedObject->insert(make_pair(key, Value(kArrayType)));
-                        }
-
-                    }
-                }
-                if (!didFind) {
-                    // TODO throw "ERROR";
-                }
-            }
-        }
-
-        void setInt(const char* scaffoldKey, int value) {
-            if (this->currentScaffold.get()->domObject.HasMember(currentKey)) {
-                this->currentScaffold.get()->domObject.FindMember(currentKey)->value.SetInt(value);
-            } else {
-
-            }
-        }
-
-        void setInt64(const char* scaffoldKey, long value) {
-            if (this->currentScaffold.get()->domObject.HasMember(currentKey)) {
-                this->currentScaffold.get()->domObject.FindMember(currentKey)->value.SetInt64(value);
-            } else {
-
-            }
-        }
-
-        void setUInt(const char* scaffoldKey, unsigned int value) {
-            if (this->currentScaffold.get()->domObject.HasMember(currentKey)) {
-                this->currentScaffold.get()->domObject.FindMember(currentKey)->value.SetUint(value);
-            } else {
-
-            }
-        }
-
-        void setUInt64(const char* scaffoldKey, unsigned long value) {
-            if (this->currentScaffold.get()->domObject.HasMember(currentKey)) {
-                this->currentScaffold.get()->domObject.FindMember(currentKey)->value.SetUint64(value);
-            } else {
-
-            }
-        }
-
-        void setFloat(const char* scaffoldKey, float value) {
-            if (this->currentScaffold.get()->domObject.HasMember(currentKey)) {
-                this->currentScaffold.get()->domObject.FindMember(currentKey)->value.SetFloat(value);
-            } else {
-
-            }
-        }
-
-        void setDouble(const char* scaffoldKey, double value) {
-            if (this->currentScaffold.get()->domObject.HasMember(currentKey)) {
-                this->currentScaffold.get()->domObject.FindMember(currentKey)->value.SetDouble(value);
-            } else {
-
-            }
-        }
-
-        void setBool(const char* scaffoldKey, bool value) {
-            if (this->currentScaffold.get()->domObject.HasMember(currentKey)) {
-                this->currentScaffold.get()->domObject.FindMember(currentKey)->value.SetBool(value);
-            } else {
-
-            }
-        }
-
-        void setNull(const char* scaffoldKey) {
-            if (this->currentScaffold.get()->domObject.HasMember(currentKey)) {
-                this->currentScaffold.get()->domObject.FindMember(currentKey)->value.SetNull();
-            } else {
-
-            }
+        char* getResultString() {
+            delete this->documentsArray;
+            delete this->spentIds;
+            delete this->scaffold;
+            return this->documentString;
         }
 
 
         bool Null() {
-            setNull("");
             return true;
         }
 
         bool Bool(bool b) {
-            setBool("", b);
             return true;
         }
 
         bool Int(int i) {
-            setInt("", i);
             return true;
         }
 
         bool Uint(unsigned u) {
-            setUInt("", u);
             return true;
         }
 
         bool Int64(int64_t i) {
-            setInt64("", i);
             return true;
         }
 
         bool Uint64(uint64_t u) {
-            setUInt64("", u);
             return true;
         }
 
         bool Double(double d) {
-            setDouble("", d);
             return true;
         }
 
@@ -183,15 +134,45 @@ namespace joinjs {
         }
 
         bool String(const char *str, SizeType length, bool copy) {
-            setString("", str, length);
+            auto itr = find(currentSchema->properties.begin(), currentSchema->properties.end(), currentKey);
+            if (itr != currentSchema->properties.end()) {
+
+            } else {
+                if (strcmp(currentSchema->idPropertyKey.c_str(), currentKey) == 0) {
+
+                } else {
+                    // Now look in associations and collections for the object
+                    for (auto itr =  currentSchema->associations.begin(); itr != currentSchema->associations.end(); itr++) {
+                        auto item = find_if(jsonSchemaMap->begin(), jsonSchemaMap->end(), get_by_map_id(itr.base()->mapId));
+                        for (auto it = item->second.properties.begin(); it != item->second.properties.end(); it++) {
+                            if (strcmp(currentKey, it.base()->data()) == 0) {
+                                if (this->nestedObjects.get() != NULL && this->nestedObjects.get()->count(itr.base()->name.c_str()) != 0) {
+
+                                    break;
+                                } else {
+                                    // Add the object to the nested objects list
+                                    ObjProps props = ObjProps();
+                                    props.name = itr.base()->name.c_str();
+                                    props.idProperty = item->second.idPropertyKey.c_str();
+                                    props.type = ASSOCIATION;
+                                    props.data = this->scaffold->getScaffoldObjectSet()->at(itr->name)->data;
+                                    this->nestedObjects.get()->insert(make_pair(itr->name.c_str(), props));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             return true;
         }
 
         bool StartObject() {
+            this->nestedObjects = unique_ptr<map<const char*, ObjProps>>(new map<const char*, ObjProps>());
             auto it = this->scaffold->getScaffoldObjectSet()->find(schemaMapId);
             if (it != this->scaffold->getScaffoldObjectSet()->end()) {
-                this->currentScaffold = unique_ptr<ObjectProperties>(it->second);
-                this->nestedObject = new map<string, Value>();
+                this->documentString = static_cast<char *>(calloc(sizeof(char), strlen(this->scaffold->getScaffoldObjectSet()->at(schemaMapId)->data)));
+                this->documentString = this->scaffold->getScaffoldObjectSet()->at(schemaMapId)->data;
             } else {
                 throw "Could not find the schemamapid in the scaffold.";
             }
@@ -199,29 +180,21 @@ namespace joinjs {
         }
 
         bool Key(const char *str, SizeType length, bool copy) {
-            currentKeyLength = length;
-            currentKey = reinterpret_cast<char *>(calloc(length, sizeof(char)));
+            this->currentKeyLength = length;
+            this->currentKey = reinterpret_cast<char *>(calloc(length, sizeof(char)));
             strcpy(currentKey, str);
             return true;
         }
 
         bool EndObject(SizeType memberCount) {
-            if (nestedObject->size() > 0) {
-                for (auto it = nestedObject->begin(); it != nestedObject->end(); it++) {
+            if (this->nestedObjects.get()->size() > 0) {
+                for (auto it = this->nestedObjects.get()->begin(); it != this->nestedObjects.get()->end(); it++) {
                     const char* idProperty = this->scaffold->getScaffoldObjectSet()->find(it->first)->second->IdProperty.c_str();
-                    if (it->second.HasMember(idProperty)) {
-                        this->currentScaffold.get()->domObject.AddMember(
-                                Value(kStringType).SetString(it->first.c_str(), it->first.length(),
-                                                             document.GetAllocator()).Move(), it->second.Move(),
-                                document.GetAllocator());
-                        this->currentScaffold.get()->domObject.RemoveMember(
-                                this->currentScaffold.get()->domObject.FindMember(it->first.c_str()));
-                    }
+                    const char* regex = "";
+                    pcre_match(regex, this->nestedObjects.get()->at(it->second.name).data);
                 }
             }
-            cout << GetJsonText(&this->currentScaffold.get()->domObject) << endl;
-            this->currentScaffold.release();
-            delete nestedObject;
+            this->nestedObjects.release();
             return true;
         }
 
@@ -235,16 +208,7 @@ namespace joinjs {
 
         const char *GetJsonText(Value *value)
         {
-            Document doc;
-            doc.CopyFrom(*value, document.GetAllocator());
-            rapidjson::StringBuffer buffer;
-
-            buffer.Clear();
-
-            rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
-            doc.Accept(writer);
-
-            return strdup( buffer.GetString() );
+            return "";
         }
 
     };

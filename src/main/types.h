@@ -9,7 +9,7 @@
 #include "schema_parser.h"
 
 namespace joinjs {
-    enum nested_map_type {collection, associative};
+    enum nest_type{ROOT, ASSOCIATION, COLLECTION};
     typedef unordered_map<std::string, joinjs::JsonSchema> JSON_SCHEMA_MAP;
 }
 
